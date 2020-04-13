@@ -9,8 +9,8 @@ from bokeh.palettes import Category20
 from bokeh.models.annotations import Title, Legend
 from bokeh.models import LinearAxis, Range1d
 Category10 = Category20[14]
-# from bokeh.plotting import reset_output
-# reset_output()
+from bokeh.plotting import reset_output
+reset_output()
 
 bv1 = pd.read_csv('datasets/bv1_sensors_rus_v3.csv')
 bv2 = pd.read_csv('datasets/bv2_sensors_rus_v4.csv')
@@ -24,49 +24,90 @@ bv2['время прихода точки на сервере'] = pd.to_datetime
 df1 = bv1[(bv1['Секция №1 Температура НП, t°'] < bv1['Секция №1 Температура НП, t°'].quantile(.96))
     & (bv1['Секция №3 Температура НП, t°'] < bv1['Секция №3 Температура НП, t°'].quantile(.83))]
 
+df2 = bv2[(bv2['Секция №1 Температура НП, t°'] < bv2['Секция №1 Температура НП, t°'].quantile(.99))
+    & (bv2['Секция №3 Температура НП, t°'] < bv2['Секция №3 Температура НП, t°'].quantile(.92))]
+
 df1['время формирования точки на БВ'] = pd.to_datetime(df1['время формирования точки на БВ'], format='%d/%m/%Y')
+df2['время формирования точки на БВ'] = pd.to_datetime(df2['время формирования точки на БВ'], format='%d/%m/%Y')
 
 p1 = figure(x_axis_type='datetime', plot_width=2500)
+p2 = figure(x_axis_type='datetime', plot_width=2500)
 # p1.extra_y_ranges = {"binary": Range1d(start=-2, end=2)}
 aline = p1.circle(df1['время формирования точки на БВ'], df1['Секция №1 Температура НП, t°'], line_width=2, color=Category10[0])
 bline = p1.circle(df1['время формирования точки на БВ'], df1['Секция №3 Температура НП, t°'], line_width=2, color=Category10[4])
+
+cline = p2.circle(df2['время формирования точки на БВ'], df2['Секция №1 Температура НП, t°'], line_width=2, color=Category10[2])
+dline = p2.circle(df2['время формирования точки на БВ'], df2['Секция №3 Температура НП, t°'], line_width=2, color=Category10[6])
 
 # p2 = figure(x_axis_type='datetime', plot_width=10000)
 # eline = p1.circle(df['время прихода точки на сервере'], df['Скорость'], line_width=2, color=Viridis6[5])
 
 p1.yaxis.axis_label = 'Температура НП'
 p1.xaxis.axis_label = 'время формирования точки на БВ'
+p2.yaxis.axis_label = 'Температура НП'
+p2.xaxis.axis_label = 'время формирования точки на БВ'
 # p2.yaxis.axis_label = 'Скорость'
 # p2.xaxis.axis_label = 'время формирования точки на БВ'
-legend = Legend(items=[
+
+legend1 = Legend(items=[
     ('Секция №1 Температура НП, БВ1', [aline]),
     ('Секция №3 Температура НП, БВ1', [bline]),
 ], location=(0, 250))
 
-t = Title()
-t.text = 'Temperatures_BV1'
-p1.title = t
+legend2 = Legend(items=[
+    ('Секция №1 Температура НП, БВ2', [cline]),
+    ('Секция №3 Температура НП, БВ2', [dline]),
+], location=(0, 250))
+
+t1 = Title()
+t1.text = 'Temperatures_BV1'
+p1.title = t1
+
+t2 = Title()
+t2.text = 'Temperatures_BV1'
+p2.title = t2
 # p2.title = t
-p1.add_layout(legend, 'left')
-p1.add_layout(LinearAxis(y_range_name="binary"), 'right')
+p1.add_layout(legend1, 'left')
+p2.add_layout(legend2, 'left')
 # p2.add_layout(legend, 'left')
-checkboxes = CheckboxGroup(labels=list(['Секция №1 Температура НП, БВ1', 'Секция №3 Температура НП, БВ1']),
+checkboxes1 = CheckboxGroup(labels=list(['Секция №1 Температура НП, БВ1', 'Секция №3 Температура НП, БВ1']),
                            active=[0, 1])
-callback = CustomJS(code="""aline.visible = false; // aline and etc.. are 
-                            bline.visible = false; // passed in from args
+checkboxes2 = CheckboxGroup(labels=list(['Секция №1 Температура НП, БВ2', 'Секция №3 Температура НП, БВ2']),
+                           active=[0, 1])
+
+
+callback1 = CustomJS(code="""aline.visible = false; // aline and etc.. are 
+                             bline.visible = false; // passed in from args
         
                             // cb_obj is injected in thanks to the callback
-                            if (cb_obj.active.includes(0)){aline.visible = true;} 
+                             if (cb_obj.active.includes(0)){aline.visible = true;} 
                                 // 0 index box is aline
-                            if (cb_obj.active.includes(1)){bline.visible = true;} 
+                             if (cb_obj.active.includes(1)){bline.visible = true;} 
                                 // 1 index box is bline
                             """,
                             args={'aline': aline, 'bline': bline})
-checkboxes.js_on_click(callback)
-layout1 = row(p1, checkboxes)
+
+callback2 = CustomJS(code="""cline.visible = false; // aline and etc.. are 
+                             dline.visible = false; // passed in from args
+        
+                            // cb_obj is injected in thanks to the callback
+                             if (cb_obj.active.includes(0)){cline.visible = true;} 
+                                // 0 index box is aline
+                             if (cb_obj.active.includes(1)){dline.visible = true;} 
+                                // 1 index box is bline
+                            """,
+                            args={'cline': cline, 'dline': dline})
+
+
+checkboxes1.js_on_click(callback1)
+checkboxes2.js_on_click(callback2)
+
+layout1 = row(p1, checkboxes1)
+layout2 = row(p2, checkboxes2)
+layout = column(layout1, layout2)
 # output_file('BV2_DUT_sensors_134_sections.html')
 # show(column(p1, p2, checkboxes))
-curdoc().add_root(layout1)
-curdoc().title="Temperatures_BV2"
+curdoc().add_root(layout)
+curdoc().title="Temperatures_BV12"
 
 show(layout)
